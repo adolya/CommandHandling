@@ -2,6 +2,10 @@ using System;
 
 namespace CommandHandling.WebApi.Sample
 {
+    public class WeatherForecastInput
+    {
+        public int Input { get; set; }
+    }
     public class WeatherForecast
     {
         public DateTime Date { get; set; }
@@ -15,8 +19,14 @@ namespace CommandHandling.WebApi.Sample
 
     public class Some
     {
-        public string Do(int i){
-            return $"Requested - {i}";
+        public WeatherForecast Do(WeatherForecastInput i){
+            return new WeatherForecast(){
+                TemperatureC = i.Input
+            };
+        }
+
+        public string Other(int i){
+            return $"Responsed - {i}";
         }
     } 
 }

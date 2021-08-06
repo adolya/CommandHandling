@@ -4,7 +4,7 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Net.Http;
 using CommandHandling.CommandHandlers;
-using CommandHandling.Mvc.DependencyInjection.Convensions;
+using CommandHandling.Mvc.DependencyInjection.Extensions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -12,52 +12,69 @@ namespace CommandHandling.Mvc.DependencyInjection
 {
     public static class CommandRegistrationExtensions
     {
+
         public static IServiceCollection RegisterHandler<TCommand, TRequest, TResponse>(
                                     this IServiceCollection services, 
                                     Expression<Func<TCommand, TRequest, TResponse>> handler, 
-                                    HttpMethod method, 
+                                    HttpMethod httpMethod, 
                                     string route = null)
             where TCommand : class
         {
-            var registrations = GetCommandHandlers(services);
+            string methodName = Char.ToUpperInvariant(httpMethod.Method[0]) + httpMethod.Method.Substring(1).ToLowerInvariant();
+            return services.RegisterHandler(handler, methodName, route);
+        }
+        public static IServiceCollection RegisterHandler<TCommand, TRequest, TResponse>(
+                                    this IServiceCollection services, 
+                                    Expression<Func<TCommand, TRequest, TResponse>> handler, 
+                                    string httpMethod = "Post", 
+                                    string route = null)
+            where TCommand : class
+        {
+            var registrations = GetCommandHandlersOptions(services);
             
             var compiled = handler.Compile();
             services.AddScoped<TCommand>();
             services.AddTransient<CommandHandler<TCommand, TRequest, TResponse>>(provider => {
-                
                 var command = provider.GetService<TCommand>();
                 return new CommandHandler<TCommand, TRequest, TResponse>(command, compiled);
             });
-            
-            registrations[new RouteInfo { Path = route, Method = method }] =
-                typeof(CommandHandler<TCommand, TRequest, TResponse>);
+
+            registrations.Handlers.Add(
+                new CommandHandlerInfo { 
+                    Path = route,
+                    Method = httpMethod,
+                    References = new Type[] {typeof(TCommand), typeof(TRequest), typeof(TResponse)},
+                    ControllerCode = handler.GenerateControllerType(route, httpMethod) 
+                });
+
 
             return services;
         }
 
         public static IServiceCollection AddHandlers(this IServiceCollection services)
         {
-            var handlers = GetCommandHandlers(services);
-            services.AddMvc(o => 
-                        o.Conventions.Add(new BaseControllerRouteConvention()))
-                        .ConfigureApplicationPartManager(
-                            m => m.FeatureProviders.Add(new BaseControllerFeatureProvider(handlers)));
+            var handlerOptions = GetCommandHandlersOptions(services);
+
+            var assembly = handlerOptions.Handlers.ToAssembly();
+            
+            services.AddMvc().ConfigureApplicationPartManager(
+                            m => m.FeatureProviders.Add(new BaseControllerFeatureProvider(assembly)));
 
             return services;
         }
 
         
-        private static IDictionary<RouteInfo, Type> GetCommandHandlers(IServiceCollection services)
+        private static CommandHandlersOptions GetCommandHandlersOptions(IServiceCollection services)
         {
-            var commandHandlers = GetServiceFromCollection<IDictionary<RouteInfo, Type>>(services);
+            var commandHandlersOptions = GetServiceFromCollection<CommandHandlersOptions>(services);
 
-            if (commandHandlers == null)
+            if (commandHandlersOptions == null)
             {
-                commandHandlers = new Dictionary<RouteInfo, Type>();
-                services.TryAddSingleton(commandHandlers);
+                commandHandlersOptions = new CommandHandlersOptions();
+                services.TryAddSingleton(commandHandlersOptions);
             }
 
-            return commandHandlers;
+            return commandHandlersOptions;
         }
 
         private static T GetServiceFromCollection<T>(IServiceCollection services)

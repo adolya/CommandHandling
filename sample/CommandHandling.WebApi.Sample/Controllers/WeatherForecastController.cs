@@ -35,5 +35,11 @@ namespace CommandHandling.WebApi.Sample.Controllers
             })
             .ToArray();
         }
+
+        [HttpPost]
+        public WeatherForecast Post([FromBody]int request)
+        {
+            return new WeatherForecast(){TemperatureC = request};
+        }
     }
 }
