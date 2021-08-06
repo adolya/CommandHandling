@@ -16,137 +16,31 @@ namespace CommandHandling.Mvc.DependencyInjection.Extensions
     {
         internal const string GeneratedNamespace = "CommandHandling.GeneratedControllers";
         
-        public static string GenerateControllerType(
-            string genericSignature, 
-            string controllerName, 
-            string httpMethodAttribute, 
-            string requestType,
-            string responseType,
-            string requestTypePrefix)
-        {
-            return ControllerTemplate.GreneralTemplate
-            .Replace("{genericSignature}", genericSignature)
-            .Replace("{controllerName}", controllerName)
-            .Replace("{httpMethodAttribute}", httpMethodAttribute)
-            .Replace("{requestType}", requestType)
-            .Replace("{responseType}", responseType)
-            .Replace("{requestTypePrefix}", requestTypePrefix);  
-        }
         public static string GenerateControllerType<TCommand, TRequest, TResponse>(this Expression<Func<TCommand, TRequest, TResponse>> handler, string route, string httpMethod)
         {
-            Type commandType = typeof(TCommand); 
-            Type request = typeof(TRequest); 
-            Type response = typeof(TResponse);
+            var requestTypePrefix = httpMethod == "Post" ? "[FromBody]" : string.Empty; // Ugly solution TODO something better
+            var controllerName = $"{route.Replace('/', '_')}_{httpMethod}";
+            var handlerName = $"ExtractMe";      
 
-            return GenerateControllerType(
-                $"{commandType.FullName}, {request.FullName}, {response.FullName}",
-                $"{route.Replace('/', '_')}_{httpMethod}Controller",
-                $"Http{httpMethod}(\"{route}\")",
-                request.FullName,
-                response.FullName,
-                httpMethod == "Post" ? "[FromBody]" : string.Empty // Ugly solution TODO something better
-            ); 
-        }
+            return $@"using Microsoft.AspNetCore.Mvc;
+namespace CommandHandling.GeneratedControllers
+{{
+    [ApiController]
+    public class {controllerName}Controller : ControllerBase
+    {{
+        private readonly {typeof(TCommand).FullName} Command;
+        public {controllerName}Controller({typeof(TCommand).FullName} command)
+        {{
+            Command = command;
+        }}
 
-        public static string GenerateControllerTypeS<TCommand, TRequest, TResponse>(this Expression<Func<TCommand, TRequest, TResponse>> handler, string route, string httpMethod)
-        {
-            Type commandType = typeof(TCommand); 
-            Type request = typeof(TRequest); 
-            Type response = typeof(TResponse);
-
-            string generatedTypeName = $"{route.Replace('/', '_')}_{httpMethod}Controller";
-            var genericArgumentsSignarture = $"{commandType.FullName}, {request.FullName}, {response.FullName}";
-            var syntaxFactory = SyntaxFactory.CompilationUnit();
-
-            // Add System using statement: (using CommandHandling.CommandHandlers)
-            syntaxFactory = syntaxFactory.AddUsings(SyntaxFactory.UsingDirective(SyntaxFactory.ParseName("CommandHandling.CommandHandlers")));
-            // Add System using statement: (using Microsoft.AspNetCore.Mvc)
-            syntaxFactory = syntaxFactory.AddUsings(SyntaxFactory.UsingDirective(SyntaxFactory.ParseName("Microsoft.AspNetCore.Mvc")));
-
-            // Create a namespace: (namespace Microsoft.AspNetCore.Mvc)
-            var @namespace = SyntaxFactory.NamespaceDeclaration(SyntaxFactory.ParseName(GeneratedNamespace)).NormalizeWhitespace();
-
-            //  Create a class: (class CommandController<,,>)
-            var classDeclaration = SyntaxFactory.ClassDeclaration(generatedTypeName);
-
-            // Add the public modifier: (public class CommandController<,,>)
-            classDeclaration = classDeclaration.AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword));
-
-            // Inherit ControllerBase: (public class CommandController<TCommand, TRequest, TResponse> : ControllerBase)
-            classDeclaration = classDeclaration.AddBaseListTypes(
-                SyntaxFactory.SimpleBaseType(SyntaxFactory.ParseTypeName("ControllerBase")));
-
-            // Create a string variable: (CommandHandler<TCommand, TRequest, TResponse> CommandHandler;)
-            var variableDeclaration = SyntaxFactory.VariableDeclaration(SyntaxFactory.ParseTypeName($"CommandHandler<{genericArgumentsSignarture}>"))
-                .AddVariables(SyntaxFactory.VariableDeclarator("CommandHandler"));
-
-            // Create a field declaration: (private readonly CommandHandler<TCommand, TRequest, TResponse> CommandHandler;)
-            var propertyDeclaration = SyntaxFactory.FieldDeclaration(variableDeclaration)
-                .AddModifiers(
-                    SyntaxFactory.Token(SyntaxKind.PrivateKeyword),
-                    SyntaxFactory.Token(SyntaxKind.ReadOnlyKeyword));
-
-            // Create a stament with the body of a method.
-            var ctorSyntax = SyntaxFactory.ParseStatement("CommandHandler = commandHandler;");
-
-            // Create a ctor
-            var ctorDeclaration = SyntaxFactory.ConstructorDeclaration(classDeclaration.Identifier)
-                .AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword))
-                .AddParameterListParameters(
-                    SyntaxFactory.Parameter(
-                        SyntaxFactory.Identifier("commandHandler"))
-                        .WithType(SyntaxFactory.ParseTypeName($"CommandHandler<{genericArgumentsSignarture}>"))
-                )
-                .WithBody(SyntaxFactory.Block(ctorSyntax));
-
-            var methodSyntax = SyntaxFactory.ParseStatement("return CommandHandler.Handle(request);");
-            var httpMethodAttribute = SyntaxFactory.Attribute(
-                            SyntaxFactory.ParseName($"Http{httpMethod}"),
-                            SyntaxFactory.ParseAttributeArgumentList($"(\"{route}\")"));
-
-            
-            string requestType = request.FullName;
-            if (httpMethod == "Post") // TODO find a better solution here
-            {
-                requestType = $"[FromBody]{requestType}";
-            }
-
-            // Create a HttpMethod
-            var methodDeclaration = 
-             SyntaxFactory.MethodDeclaration(SyntaxFactory.ParseTypeName($"{response.FullName}"), "Process")
-                .AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword))
-                .AddParameterListParameters(
-                    SyntaxFactory.Parameter(
-                        SyntaxFactory.Identifier("request"))
-                        .WithType(SyntaxFactory.ParseTypeName(requestType).NormalizeWhitespace())
-                )
-                .AddAttributeLists(
-                    SyntaxFactory.AttributeList(
-                        SyntaxFactory.SingletonSeparatedList(
-                            httpMethodAttribute
-                        )
-                    )
-                )
-                .WithBody(SyntaxFactory.Block(methodSyntax));
-
-            // Add the field, the property and method to the class.
-            classDeclaration = classDeclaration.AddMembers(propertyDeclaration, ctorDeclaration, methodDeclaration);
-
-            // Add the class to the namespace.
-            @namespace = @namespace.AddMembers(classDeclaration);
-
-            // Add the namespace to the compilation unit.
-            syntaxFactory = syntaxFactory.AddMembers(@namespace);
-
-            // Normalize and get code as string.
-            var code = syntaxFactory
-                .NormalizeWhitespace()
-                .ToFullString();
-
-            // Output new code to the console.
-            Console.WriteLine(code);
-
-            return code;
+        [Http{httpMethod}(""{route}"")]
+        public {typeof(TResponse).FullName} Process({requestTypePrefix}{typeof(TRequest).FullName} request)
+        {{
+            return Command.{handlerName}(request);
+        }}
+    }}
+}}";          
         }
 
         public static Assembly ToAssembly(this IEnumerable<CommandHandlerInfo> handlerInfos)

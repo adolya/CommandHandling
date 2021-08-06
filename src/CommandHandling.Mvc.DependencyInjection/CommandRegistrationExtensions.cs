@@ -39,14 +39,14 @@ namespace CommandHandling.Mvc.DependencyInjection
                 return new CommandHandler<TCommand, TRequest, TResponse>(command, compiled);
             });
 
-            registrations.Handlers.Add(
-                new CommandHandlerInfo { 
+            var handlerInfo = new CommandHandlerInfo { 
                     Path = route,
                     Method = httpMethod,
                     References = new Type[] {typeof(TCommand), typeof(TRequest), typeof(TResponse)},
                     ControllerCode = handler.GenerateControllerType(route, httpMethod) 
-                });
-
+                }; 
+            registrations.Handlers.Add(handlerInfo);
+            Console.WriteLine(handlerInfo.ControllerCode);
 
             return services;
         }
