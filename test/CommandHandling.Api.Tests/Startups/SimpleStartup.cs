@@ -11,8 +11,13 @@ namespace CommandHandling.Api.Tests.Startups
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            services.RegisterHandler<MathCommand, int, string>((math, size) => math.Square(size), HttpMethod.Get, "routed"); 
-            services.AddHandlers();
+            services.RegisterHandler<MathCommand, int, string>(
+                        (math, size) => math.Square(size), 
+                        o => {
+                            o.Method = HttpMethod.Get; 
+                            o.Route = "routed";
+                            }); 
+            services.AddHandlers(o => o.GenaratedFilesPath = "d:\\tmp\\controllers");
         }
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)

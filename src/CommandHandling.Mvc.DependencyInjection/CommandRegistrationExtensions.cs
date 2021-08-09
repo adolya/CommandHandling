@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Net.Http;
@@ -12,22 +13,9 @@ namespace CommandHandling.Mvc.DependencyInjection
 {
     public static class CommandRegistrationExtensions
     {
-
         public static IServiceCollection RegisterHandler<TCommand, TRequest, TResponse>(
                                     this IServiceCollection services, 
-                                    Expression<Func<TCommand, TRequest, TResponse>> handler, 
-                                    HttpMethod httpMethod, 
-                                    string route = null)
-            where TCommand : class
-        {
-            string methodName = Char.ToUpperInvariant(httpMethod.Method[0]) + httpMethod.Method.Substring(1).ToLowerInvariant();
-            return services.RegisterHandler(handler, methodName, route);
-        }
-        public static IServiceCollection RegisterHandler<TCommand, TRequest, TResponse>(
-                                    this IServiceCollection services, 
-                                    Expression<Func<TCommand, TRequest, TResponse>> handler, 
-                                    string httpMethod = "Post", 
-                                    string route = null)
+                                    Expression<Func<TCommand, TRequest, TResponse>> handler, Action<ControllerOptions> overrideOptions = null)
             where TCommand : class
         {
             var registrations = GetCommandHandlersOptions(services);
@@ -39,23 +27,39 @@ namespace CommandHandling.Mvc.DependencyInjection
                 return new CommandHandler<TCommand, TRequest, TResponse>(command, compiled);
             });
 
-            var handlerInfo = new CommandHandlerInfo { 
-                    Path = route,
-                    Method = httpMethod,
-                    References = new Type[] {typeof(TCommand), typeof(TRequest), typeof(TResponse)},
-                    ControllerCode = handler.GenerateControllerType(route, httpMethod) 
-                }; 
-            registrations.Handlers.Add(handlerInfo);
-            Console.WriteLine(handlerInfo.ControllerCode);
+            var handlerInfo = new ControllerDetails<TCommand, TRequest, TResponse>();
+            
+            if (overrideOptions != null)
+                overrideOptions(handlerInfo.Options);
+
+            handlerInfo.GenerateControllerType(handler);
+            registrations.Controllers.Add(handlerInfo);
+            Console.WriteLine(handlerInfo.Code);
 
             return services;
         }
 
-        public static IServiceCollection AddHandlers(this IServiceCollection services)
+        public static IServiceCollection AddHandlers(this IServiceCollection services, Action<CommandHandlersOptions> overrideOptions = null)
         {
             var handlerOptions = GetCommandHandlersOptions(services);
+            
+            if (overrideOptions != null)
+                overrideOptions(handlerOptions);
 
-            var assembly = handlerOptions.Handlers.ToAssembly();
+            if (Directory.Exists(handlerOptions.GenaratedFilesPath))
+            {
+                foreach (var controller in handlerOptions.Controllers)
+                {   
+                    using (StreamWriter writer = new StreamWriter(
+                                    Path.Combine(
+                                        handlerOptions.GenaratedFilesPath, 
+                                        $"{GeneratorExtensions.GeneratedNamespace}_{controller.Name}.cs")))  
+                    {  
+                        writer.Write(controller.Code);  
+                    }  
+                }
+            }
+            var assembly = handlerOptions.Controllers.ToAssembly();
             
             services.AddMvc().ConfigureApplicationPartManager(
                             m => m.FeatureProviders.Add(new BaseControllerFeatureProvider(assembly)));

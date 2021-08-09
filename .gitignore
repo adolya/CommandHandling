@@ -291,3 +291,6 @@ cross/rootfs/*
 .terraform
 terraform.tfstate
 terraform.tfstate.backup
+
+# Specflow
+*.feature.cs

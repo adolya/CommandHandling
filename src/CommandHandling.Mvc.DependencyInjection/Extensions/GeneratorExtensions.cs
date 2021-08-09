@@ -12,40 +12,45 @@ using Microsoft.CodeAnalysis.CSharp;
 
 namespace CommandHandling.Mvc.DependencyInjection.Extensions
 {
-    public static class RoslynExtensions
+    public static class GeneratorExtensions
     {
         internal const string GeneratedNamespace = "CommandHandling.GeneratedControllers";
         
-        public static string GenerateControllerType<TCommand, TRequest, TResponse>(this Expression<Func<TCommand, TRequest, TResponse>> handler, string route, string httpMethod)
+        public static void GenerateControllerType<TCommand, TRequest, TResponse>(this IControllerDetails controllerDetails, Expression<Func<TCommand, TRequest, TResponse>> handler)
         {
-            var requestTypePrefix = httpMethod == "Post" ? "[FromBody]" : string.Empty; // Ugly solution TODO something better
-            var controllerName = $"{route.Replace('/', '_')}_{httpMethod}";
-            var handlerName = $"ExtractMe";      
+            var httpMethod = Char.ToUpperInvariant(controllerDetails.Options.Method.Method[0]) + controllerDetails.Options.Method.Method.Substring(1).ToLowerInvariant();
+            var handlerDetails = ExtractMethodName(handler);      
 
-            return $@"using Microsoft.AspNetCore.Mvc;
+            controllerDetails.Name = $"{handlerDetails.objectName}_{handlerDetails.methodName}_{httpMethod}Controller";
+
+            var requestTypePrefix = httpMethod == "Post" ? "[FromBody]" : string.Empty; // Ugly solution TODO something better
+
+            controllerDetails.Code = $@"using Microsoft.AspNetCore.Mvc;
 namespace CommandHandling.GeneratedControllers
 {{
+    [Route(""{handlerDetails.objectName}"")]
+    [ApiExplorerSettings(GroupName = ""{handlerDetails.objectName}"")]
     [ApiController]
-    public class {controllerName}Controller : ControllerBase
+    public class {controllerDetails.Name} : ControllerBase
     {{
-        private readonly {typeof(TCommand).FullName} Command;
-        public {controllerName}Controller({typeof(TCommand).FullName} command)
+        private readonly {typeof(TCommand).FullName} _{handlerDetails.objectName};
+        public {controllerDetails.Name}({typeof(TCommand).FullName} {handlerDetails.objectName})
         {{
-            Command = command;
+            _{handlerDetails.objectName} = {handlerDetails.objectName};
         }}
 
-        [Http{httpMethod}(""{route}"")]
-        public {typeof(TResponse).FullName} Process({requestTypePrefix}{typeof(TRequest).FullName} request)
+        [Http{httpMethod}(""{controllerDetails.Options.Route ?? handlerDetails.methodName}"")]
+        public {typeof(TResponse).FullName} Process({requestTypePrefix}{typeof(TRequest).FullName} {handlerDetails.parameterName})
         {{
-            return Command.{handlerName}(request);
+            return _{handlerDetails.objectName}.{handlerDetails.methodName}({handlerDetails.parameterName});
         }}
     }}
 }}";          
         }
 
-        public static Assembly ToAssembly(this IEnumerable<CommandHandlerInfo> handlerInfos)
+        public static Assembly ToAssembly(this IEnumerable<IControllerDetails> handlerInfos)
         {
-            var syntaxTrees = handlerInfos.Select(_ => CSharpSyntaxTree.ParseText(_.ControllerCode)).ToList();
+            var syntaxTrees = handlerInfos.Select(_ => CSharpSyntaxTree.ParseText(_.Code)).ToList();
             var dependcies = handlerInfos.SelectMany(_ => _.References).Select(_ => _.Assembly.Location).Distinct().ToList();
             var assemblyPath = Path.GetDirectoryName(typeof(object).Assembly.Location);
             dependcies.Add(Path.Combine(assemblyPath, "mscorlib.dll"));
@@ -84,6 +89,16 @@ namespace CommandHandling.GeneratedControllers
 
             var dynamicallyCompiledAssembly = Assembly.Load(memoryStream.ToArray());
             return dynamicallyCompiledAssembly;
+        }
+
+        private static (string objectName, string methodName, string parameterName) ExtractMethodName<TCommand, TRequest, TResponse>(Expression<Func<TCommand, TRequest, TResponse>> handler)
+        {
+            var body = handler.Body as MethodCallExpression;
+            var instance = body.Object as ParameterExpression;
+            var instanceName = instance.Name;
+            var methodName = body.Method.Name;
+            var parameterName = body.Method.GetParameters();
+            return (objectName: instance.Name, methodName: methodName, parameterName: parameterName.First().Name);
         }
     }
 }
