@@ -25,12 +25,16 @@ namespace CommandHandling.Mvc.DependencyInjection.Extensions
 
             var requestTypePrefix = httpMethod == "Post" ? "[FromBody]" : string.Empty; // Ugly solution TODO something better
 
+            var controllerAttributes = string.Join($"{Environment.NewLine}", new string[] {
+                "[ApiController]",
+                $"    [Route(\"{handlerDetails.objectName}\")]",
+                $"    [ApiExplorerSettings(GroupName = \"{handlerDetails.objectName}\")]"});
+
             controllerDetails.Code = $@"using Microsoft.AspNetCore.Mvc;
+            
 namespace CommandHandling.GeneratedControllers
 {{
-    [Route(""{handlerDetails.objectName}"")]
-    [ApiExplorerSettings(GroupName = ""{handlerDetails.objectName}"")]
-    [ApiController]
+    {controllerAttributes}
     public class {controllerDetails.Name} : ControllerBase
     {{
         private readonly {typeof(TCommand).FullName} _{handlerDetails.objectName};
