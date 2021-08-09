@@ -31,13 +31,14 @@ namespace CommandHandling.WebApi.Sample
         {
             services.AddControllers();
             services.RegisterHandler<Some, int, string>(
-                        (math, size) => math.Other(size),
+                        (some, size) => some.Other(size),
                         o =>
                         {
                             o.Method = HttpMethod.Get;
                         });
             services.RegisterHandler<Some, WeatherForecastInput, WeatherForecast>(
                         (math, size) => math.Do(size));
+                        
             services.AddHandlers(o => o.GenaratedFilesPath = "d:\\tmp\\controllers");
             services.AddSwaggerGen(c =>
             {

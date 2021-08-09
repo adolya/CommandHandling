@@ -5,7 +5,6 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
-using CommandHandling.CommandHandlers;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -28,7 +27,7 @@ namespace CommandHandling.Mvc.DependencyInjection.Extensions
             var controllerAttributes = string.Join($"{Environment.NewLine}", new string[] {
                 "[ApiController]",
                 $"    [Route(\"{handlerDetails.objectName}\")]",
-                $"    [ApiExplorerSettings(GroupName = \"{handlerDetails.objectName}\")]"});
+                $"    [ApiExplorerSettings(GroupName = \"{typeof(TCommand).Name}\")]"});
 
             controllerDetails.Code = $@"using Microsoft.AspNetCore.Mvc;
             
@@ -56,15 +55,14 @@ namespace CommandHandling.GeneratedControllers
         {
             var syntaxTrees = handlerInfos.Select(_ => CSharpSyntaxTree.ParseText(_.Code)).ToList();
             var dependcies = handlerInfos.SelectMany(_ => _.References).Select(_ => _.Assembly.Location).Distinct().ToList();
-            var assemblyPath = Path.GetDirectoryName(typeof(object).Assembly.Location);
-            dependcies.Add(Path.Combine(assemblyPath, "mscorlib.dll"));
-            dependcies.Add(Path.Combine(assemblyPath, "System.dll"));
-            dependcies.Add(Path.Combine(assemblyPath, "System.Core.dll"));
-            dependcies.Add(Path.Combine(assemblyPath, "System.Runtime.dll"));
-            dependcies.Add(Path.Combine(assemblyPath, "netstandard.dll"));
+            // var assemblyPath = Path.GetDirectoryName(typeof(object).Assembly.Location);
+            // dependcies.Add(Path.Combine(assemblyPath, "mscorlib.dll"));
+            // dependcies.Add(Path.Combine(assemblyPath, "System.dll"));
+            // dependcies.Add(Path.Combine(assemblyPath, "System.Core.dll"));
+            // dependcies.Add(Path.Combine(assemblyPath, "System.Runtime.dll"));
+            // dependcies.Add(Path.Combine(assemblyPath, "netstandard.dll"));
             dependcies.Add(typeof(object).Assembly.Location);
             dependcies.Add(typeof(ControllerBase).Assembly.Location);
-            dependcies.Add(typeof(CommandHandler<,,>).Assembly.Location);
             dependcies = dependcies.Distinct().ToList();
             //dependcies.Add(typeof(HttpPostAttribute).Assembly);
             var compilation = CSharpCompilation.Create(

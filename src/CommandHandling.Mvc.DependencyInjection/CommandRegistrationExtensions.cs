@@ -3,8 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
-using System.Net.Http;
-using CommandHandling.CommandHandlers;
 using CommandHandling.Mvc.DependencyInjection.Extensions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -22,10 +20,6 @@ namespace CommandHandling.Mvc.DependencyInjection
             
             var compiled = handler.Compile();
             services.AddScoped<TCommand>();
-            services.AddTransient<CommandHandler<TCommand, TRequest, TResponse>>(provider => {
-                var command = provider.GetService<TCommand>();
-                return new CommandHandler<TCommand, TRequest, TResponse>(command, compiled);
-            });
 
             var handlerInfo = new ControllerDetails<TCommand, TRequest, TResponse>();
             
