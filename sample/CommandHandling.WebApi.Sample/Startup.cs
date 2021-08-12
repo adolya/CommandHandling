@@ -1,18 +1,16 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
+using System.IO;
 using System.Net.Http;
-using System.Threading.Tasks;
-using CommandHandling.Mvc.DependencyInjection;
+using System.Reflection;
+using CommandHandling.Mvc.DependencyInjection.Extensions;
+using CommandHandling.Samples;
+using CommandHandling.Samples.Models;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.HttpsPolicy;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi.Models;
 
 namespace CommandHandling.WebApi.Sample
@@ -38,12 +36,32 @@ namespace CommandHandling.WebApi.Sample
                         });
             services.RegisterHandler<Some, WeatherForecastInput, WeatherForecast>(
                         (math, size) => math.Do(size));
-                        
-            services.AddHandlers(o => o.GenaratedFilesPath = "d:\\tmp\\controllers");
+            
+            services.RegisterHandler<MathCommand, int, string>(
+                        (math, size) => math.SquareRoot(size));        
+
+            services.RegisterHandler<MathCommand, SizeRequest, ResultResponse>(
+                        (math, size) => math.Square(size));  
+
+            services.AddHandlers(/* o => o.GenaratedFilesPath = "d:\\tmp\\controllers" */);
+
+
             services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "CommandHandling.WebApi.Sample", Version = "v1" });
 
+                var path1 = AppDomain.CurrentDomain.BaseDirectory;
+                var path2 = Assembly.GetEntryAssembly()?.GetName().Name;
+                var path = Path.Combine(path1, path2);
+                var xmlDocPath = $@"{path}.xml";
+
+                if (File.Exists(xmlDocPath))
+                {
+                    c.IncludeXmlComments(xmlDocPath);
+                }
+                
+                c.AddHandlerDocs();
+                
                 c.TagActionsBy(api =>
                     {
                         if (api.GroupName != null)

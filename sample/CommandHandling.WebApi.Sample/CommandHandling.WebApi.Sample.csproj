@@ -6,11 +6,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Swashbuckle.AspNetCore" Version="5.6.3" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\..\src\CommandHandling.Mvc.DependencyInjection\CommandHandling.Mvc.DependencyInjection.csproj" />
+    <ProjectReference Include="..\..\test\CommandHandling.Samples\CommandHandling.Samples.csproj" />
   </ItemGroup>
 
 </Project>

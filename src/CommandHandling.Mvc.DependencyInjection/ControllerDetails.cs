@@ -9,9 +9,13 @@ namespace CommandHandling.Mvc.DependencyInjection
 
         IEnumerable<Type> References {get; set;}
 
-        string Name {get; set;}
-    
-        string Code {get; set;}
+        string GeneratedCode {get; set;}
+        
+        ActionDetails ActionDetails {get; set;}
+
+        string HttpMethod();
+
+        string ControllerName();
     }
 
     public class ControllerDetails<TCommand, TRequest, TResponse> : IControllerDetails
@@ -28,8 +32,18 @@ namespace CommandHandling.Mvc.DependencyInjection
 
         public IEnumerable<Type> References {get; set;}
 
-        public string Name {get; set;}
-        
-        public string Code {get; set;}
+        public string GeneratedCode {get; set;}
+
+        public ActionDetails ActionDetails { get; set; } = new ActionDetails();
+
+        public string HttpMethod()
+        {
+            return Char.ToUpperInvariant(Options.Method.Method[0]) + Options.Method.Method.Substring(1).ToLowerInvariant();
+        }
+
+        public string ControllerName()
+        {
+            return  $"{ActionDetails.CommandName}_{ActionDetails.MethodName}_{HttpMethod()}Controller";
+        }
     }
 }

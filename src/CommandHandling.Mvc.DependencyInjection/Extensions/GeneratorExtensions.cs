@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
 using Microsoft.AspNetCore.Mvc;
@@ -15,37 +14,40 @@ namespace CommandHandling.Mvc.DependencyInjection.Extensions
     {
         internal const string GeneratedNamespace = "CommandHandling.GeneratedControllers";
         
-        public static void GenerateControllerType<TCommand, TRequest, TResponse>(this IControllerDetails controllerDetails, Expression<Func<TCommand, TRequest, TResponse>> handler)
+        public static void GenerateControllerType<TCommand, TRequest, TResponse>(this IControllerDetails controllerDetails)
         {
-            var httpMethod = Char.ToUpperInvariant(controllerDetails.Options.Method.Method[0]) + controllerDetails.Options.Method.Method.Substring(1).ToLowerInvariant();
-            var handlerDetails = ExtractMethodName(handler);      
-
-            controllerDetails.Name = $"{handlerDetails.objectName}_{handlerDetails.methodName}_{httpMethod}Controller";
-
+            var httpMethod = controllerDetails.HttpMethod();
             var requestTypePrefix = httpMethod == "Post" ? "[FromBody]" : string.Empty; // Ugly solution TODO something better
 
             var controllerAttributes = string.Join($"{Environment.NewLine}", new string[] {
                 "[ApiController]",
-                $"    [Route(\"{handlerDetails.objectName}\")]",
+                $"    [Route(\"{controllerDetails.ActionDetails.CommandName}\")]",
                 $"    [ApiExplorerSettings(GroupName = \"{typeof(TCommand).Name}\")]"});
-
-            controllerDetails.Code = $@"using Microsoft.AspNetCore.Mvc;
+            
+            var comments = (string.IsNullOrEmpty(controllerDetails.ActionDetails.Comments) ? 
+                                new string[0] 
+                                : controllerDetails.ActionDetails.Comments.Split(Environment.NewLine))
+                            .Where(_ => !string.IsNullOrWhiteSpace(_))
+                            .Select(_ => $"/// {_}" ).ToList();
+            comments.Add($"[Http{httpMethod}(\"{controllerDetails.Options.Route ?? controllerDetails.ActionDetails.MethodName}\")]");
+            var methodAttributes = string.Join($"{Environment.NewLine}", comments);
+            controllerDetails.GeneratedCode = $@"using Microsoft.AspNetCore.Mvc;
             
 namespace CommandHandling.GeneratedControllers
 {{
     {controllerAttributes}
-    public class {controllerDetails.Name} : ControllerBase
+    public class {controllerDetails.ControllerName()} : ControllerBase
     {{
-        private readonly {typeof(TCommand).FullName} _{handlerDetails.objectName};
-        public {controllerDetails.Name}({typeof(TCommand).FullName} {handlerDetails.objectName})
+        private readonly {typeof(TCommand).FullName} _{controllerDetails.ActionDetails.CommandName};
+        public {controllerDetails.ControllerName()}({typeof(TCommand).FullName} {controllerDetails.ActionDetails.CommandName})
         {{
-            _{handlerDetails.objectName} = {handlerDetails.objectName};
+            _{controllerDetails.ActionDetails.CommandName} = {controllerDetails.ActionDetails.CommandName};
         }}
 
-        [Http{httpMethod}(""{controllerDetails.Options.Route ?? handlerDetails.methodName}"")]
-        public {typeof(TResponse).FullName} Process({requestTypePrefix}{typeof(TRequest).FullName} {handlerDetails.parameterName})
+        {methodAttributes}
+        public {typeof(TResponse).FullName} Process({requestTypePrefix}{typeof(TRequest).FullName} {controllerDetails.ActionDetails.ParameterName})
         {{
-            return _{handlerDetails.objectName}.{handlerDetails.methodName}({handlerDetails.parameterName});
+            return _{controllerDetails.ActionDetails.CommandName}.{controllerDetails.ActionDetails.MethodName}({controllerDetails.ActionDetails.ParameterName});
         }}
     }}
 }}";          
@@ -53,14 +55,14 @@ namespace CommandHandling.GeneratedControllers
 
         public static Assembly ToAssembly(this IEnumerable<IControllerDetails> handlerInfos)
         {
-            var syntaxTrees = handlerInfos.Select(_ => CSharpSyntaxTree.ParseText(_.Code)).ToList();
+            var syntaxTrees = handlerInfos.Select(_ => CSharpSyntaxTree.ParseText(_.GeneratedCode)).ToList();
             var dependcies = handlerInfos.SelectMany(_ => _.References).Select(_ => _.Assembly.Location).Distinct().ToList();
-            // var assemblyPath = Path.GetDirectoryName(typeof(object).Assembly.Location);
-            // dependcies.Add(Path.Combine(assemblyPath, "mscorlib.dll"));
-            // dependcies.Add(Path.Combine(assemblyPath, "System.dll"));
-            // dependcies.Add(Path.Combine(assemblyPath, "System.Core.dll"));
-            // dependcies.Add(Path.Combine(assemblyPath, "System.Runtime.dll"));
-            // dependcies.Add(Path.Combine(assemblyPath, "netstandard.dll"));
+            var assemblyPath = Path.GetDirectoryName(typeof(object).Assembly.Location);
+            dependcies.Add(Path.Combine(assemblyPath, "mscorlib.dll"));
+            dependcies.Add(Path.Combine(assemblyPath, "System.dll"));
+            dependcies.Add(Path.Combine(assemblyPath, "System.Core.dll"));
+            dependcies.Add(Path.Combine(assemblyPath, "System.Runtime.dll"));
+            dependcies.Add(Path.Combine(assemblyPath, "netstandard.dll"));
             dependcies.Add(typeof(object).Assembly.Location);
             dependcies.Add(typeof(ControllerBase).Assembly.Location);
             dependcies = dependcies.Distinct().ToList();
@@ -74,33 +76,38 @@ namespace CommandHandling.GeneratedControllers
                     optimizationLevel: OptimizationLevel.Release)
             );
 
+            var xmlDocPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, $"{GeneratedNamespace}.xml");
+            // Delete the file if it exists.
+            if (File.Exists(xmlDocPath))
+            {
+                File.Delete(xmlDocPath);
+            }
             // Compile it to a memory stream
             var memoryStream = new MemoryStream();
-            var result = compilation.Emit(memoryStream);
-
-                        // If it was not successful, throw an exception to fail the test
-            if (!result.Success)
+            
+            //Create the file.
+            using (FileStream fs = File.Create(xmlDocPath))
             {
-                var stringBuilder = new StringBuilder();
-                foreach (var diagnostic in result.Diagnostics)
+                var result = compilation.Emit(
+                                memoryStream,
+                                null, 
+                                fs);
+                if (!result.Success)
                 {
-                    stringBuilder.AppendLine(diagnostic.ToString());
+                    var stringBuilder = new StringBuilder();
+                    foreach (var diagnostic in result.Diagnostics)
+                    {
+                        stringBuilder.AppendLine(diagnostic.ToString());
+                    }
+                    Console.WriteLine(stringBuilder.ToString());
                 }
-                Console.WriteLine(stringBuilder.ToString());
+                memoryStream.Dispose();
             }
+                        // If it was not successful, throw an exception to fail the test
+            
 
             var dynamicallyCompiledAssembly = Assembly.Load(memoryStream.ToArray());
             return dynamicallyCompiledAssembly;
-        }
-
-        private static (string objectName, string methodName, string parameterName) ExtractMethodName<TCommand, TRequest, TResponse>(Expression<Func<TCommand, TRequest, TResponse>> handler)
-        {
-            var body = handler.Body as MethodCallExpression;
-            var instance = body.Object as ParameterExpression;
-            var instanceName = instance.Name;
-            var methodName = body.Method.Name;
-            var parameterName = body.Method.GetParameters();
-            return (objectName: instance.Name, methodName: methodName, parameterName: parameterName.First().Name);
         }
     }
 }
