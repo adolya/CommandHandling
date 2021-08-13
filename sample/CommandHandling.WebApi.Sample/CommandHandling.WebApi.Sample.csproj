@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net5.0</TargetFramework>
+    <DisableImplicitComponentsAnalyzers>true</DisableImplicitComponentsAnalyzers>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\CommandHandling.Mvc.DependencyInjection\CommandHandling.Mvc.DependencyInjection.csproj" />
+    <ProjectReference Include="..\..\test\CommandHandling.Samples\CommandHandling.Samples.csproj" />
+  </ItemGroup>
+
+</Project>
