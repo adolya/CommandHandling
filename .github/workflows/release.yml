@@ -10,20 +10,20 @@ jobs:
     runs-on: windows-latest
 
     steps:                                                                                                                     
+    - name: Extract version
+      uses: bhowell2/github-substring-action@v1.0.0
+      id: package_version
+      with:
+        value: ${{github.event.release.tag_name}}
+        index_of_str: "v"
     - name: Checkout
       uses: actions/checkout@v2
     - name: Setup dotnet
       uses: actions/setup-dotnet@v1
       with:
         dotnet-version: '5.0.x'
-    - name: Extract version
-      uses: bhowell2/github-substring-action@v1.0.0
-      id: common_version
-      with:
-        value: ${{github.event.release.tag_name}}
-          index_of_str: "v"  
     - name: Create NuGet Package
-      run: dotnet pack -c Release /p:Version=${{ steps.common_version.outputs.substring }}
+      run: dotnet pack -c Release /p:Version=${{ steps.package_version.outputs.substring }}
       working-directory: ./src/CommandHandling.Mvc.DependencyInjection
     - name: Publish Nuget Package
       run: dotnet nuget push **/*.nupkg --api-key ${{ secrets.nuget_api_key }} --source https://api.nuget.org/v3/index.json --no-symbols true
