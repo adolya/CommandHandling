@@ -14,7 +14,7 @@
       <Company>adolya</Company>
       <Description>CommandHandling dependency injection extensions </Description>
       <Authors>Artem Dolya</Authors>
-      <PackageTags>CommandHandling;AspNetCore;AspNet;DependencyInjection;Controllers</PackageTags>
+      <PackageTags>CommandHandling;AspNet;AspNetWebApi;WebApi</PackageTags>
       <PackageProjectUrl>https://github.com/adolya/CommandHandling</PackageProjectUrl>
       <RepositoryType>git</RepositoryType>
       <RepositoryUrl>git@github.com:adolya/CommandHandling.git</RepositoryUrl>

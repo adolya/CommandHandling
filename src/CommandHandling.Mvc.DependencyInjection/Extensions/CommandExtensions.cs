@@ -26,7 +26,7 @@ namespace CommandHandling.Mvc.DependencyInjection.Extensions
             controllerDetails.ActionDetails.Fill(handler, handlerOptions.XmlDocs);
             controllerDetails.GenerateControllerType<TCommand, TRequest, TResponse>();
             handlerOptions.Controllers.Add(controllerDetails);
-            Console.WriteLine(controllerDetails.GeneratedCode);
+            //Console.WriteLine(controllerDetails.GeneratedCode);
 
             return services;
         }
