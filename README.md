@@ -3,7 +3,7 @@ Command Handling
 [![NuGet](https://img.shields.io/nuget/v/CommandHandling.AspNetCore.DependencyInjection.svg)](https://www.nuget.org/packages/CommandHandling.AspNetCore.DependencyInjection/)
 
 
-CommandHandling is set of an [IServiceCollection](https://github.com/aspnet/DependencyInjection/blob/master/src/DI.Abstractions/IServiceCollection.cs) extensions for [AspNet](https://github.com/dotnet/aspnetcore) framework. It allows you to focus on your business logic, and safe time for generating controller wrappers. 
+CommandHandling is set of an [IServiceCollection](https://github.com/aspnet/DependencyInjection/blob/master/src/DI.Abstractions/IServiceCollection.cs) extensions for [AspNetCore](https://github.com/dotnet/aspnetcore) framework. It allows you to focus on your business logic, and safe time for generating controller wrappers. 
 
 ## Get Started
 
