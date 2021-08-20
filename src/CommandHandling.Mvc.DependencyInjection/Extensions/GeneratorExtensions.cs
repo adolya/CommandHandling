@@ -29,7 +29,7 @@ namespace CommandHandling.Mvc.DependencyInjection.Extensions
                                 : controllerDetails.ActionDetails.Comments.Split(Environment.NewLine))
                             .Where(_ => !string.IsNullOrWhiteSpace(_))
                             .Select(_ => $"/// {_}" ).ToList();
-            comments.Add($"[Http{httpMethod}(\"{controllerDetails.Options.Route ?? controllerDetails.ActionDetails.MethodName}\")]");
+            comments.Add($"[Http{httpMethod}(\"{controllerDetails.Route()}\")]");
             var methodAttributes = string.Join($"{Environment.NewLine}", comments);
             controllerDetails.GeneratedCode = $@"using Microsoft.AspNetCore.Mvc;
             
@@ -58,11 +58,14 @@ namespace CommandHandling.GeneratedControllers
             var syntaxTrees = handlerInfos.Select(_ => CSharpSyntaxTree.ParseText(_.GeneratedCode)).ToList();
             var dependcies = handlerInfos.SelectMany(_ => _.References).Select(_ => _.Assembly.Location).Distinct().ToList();
             var assemblyPath = Path.GetDirectoryName(typeof(object).Assembly.Location);
-            dependcies.Add(Path.Combine(assemblyPath, "mscorlib.dll"));
-            dependcies.Add(Path.Combine(assemblyPath, "System.dll"));
-            dependcies.Add(Path.Combine(assemblyPath, "System.Core.dll"));
-            dependcies.Add(Path.Combine(assemblyPath, "System.Runtime.dll"));
-            dependcies.Add(Path.Combine(assemblyPath, "netstandard.dll"));
+            if (!string.IsNullOrEmpty(assemblyPath))
+            {
+                dependcies.Add(Path.Combine(assemblyPath, "mscorlib.dll"));
+                dependcies.Add(Path.Combine(assemblyPath, "System.dll"));
+                dependcies.Add(Path.Combine(assemblyPath, "System.Core.dll"));
+                dependcies.Add(Path.Combine(assemblyPath, "System.Runtime.dll"));
+                dependcies.Add(Path.Combine(assemblyPath, "netstandard.dll"));
+            }
             dependcies.Add(typeof(object).Assembly.Location);
             dependcies.Add(typeof(ControllerBase).Assembly.Location);
             dependcies = dependcies.Distinct().ToList();

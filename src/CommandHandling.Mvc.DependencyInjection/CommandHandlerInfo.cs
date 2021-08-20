@@ -7,7 +7,7 @@ namespace CommandHandling.Mvc.DependencyInjection
     {
         public XmlDocumentation XmlDocs = new XmlDocumentation();
 
-        public string GenaratedFilesPath { get; set; }
+        public string? GenaratedFilesPath { get; set; }
 
         public bool GroupByCommand {get; set;} = false;  
         

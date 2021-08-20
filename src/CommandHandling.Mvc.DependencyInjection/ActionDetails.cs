@@ -6,7 +6,7 @@ namespace CommandHandling.Mvc.DependencyInjection
 {
     public class ActionDetails
     {
-        public string CommandName {get; set;}
+        public string CommandName { get; private set; }
         
         public string MethodName {get; set;}
         
@@ -14,17 +14,26 @@ namespace CommandHandling.Mvc.DependencyInjection
 
         public string Comments {get; set;}
 
-        internal void Fill<TCommand, TRequest, TResponse>(
+        public ActionDetails(string commandName, string methodName, string parameterName, string comments)
+        {
+            CommandName = commandName;
+            MethodName = methodName;
+            ParameterName = parameterName;
+            Comments = comments;
+        }
+
+        internal static ActionDetails Fill<TCommand, TRequest, TResponse>(
                 Expression<Func<TCommand, TRequest, TResponse>> handler,
                 XmlDocumentation xmlDocs) 
             where TCommand : class
         {
             var body = handler.Body as MethodCallExpression;
-            var instance = body.Object as ParameterExpression;
-            CommandName = instance.Name;
-            MethodName = body.Method.Name;
-            ParameterName = body.Method.GetParameters().First().Name;
-            Comments = xmlDocs.GetDocumentation(body.Method);
+            ParameterExpression? instance = body.Object as ParameterExpression;
+            return new ActionDetails(
+                                    instance.Name, 
+                                    body.Method.Name,
+                                    body.Method.GetParameters().First().Name,
+                                    xmlDocs.GetDocumentation(body.Method));
         }
     }
 }

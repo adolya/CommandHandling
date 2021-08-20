@@ -11,31 +11,35 @@ namespace CommandHandling.Mvc.DependencyInjection
 
         string GeneratedCode {get; set;}
         
-        ActionDetails ActionDetails {get; set;}
+        ActionDetails ActionDetails {get;}
 
         string HttpMethod();
 
         string ControllerName();
+
+        string Route();
     }
 
     public class ControllerDetails<TCommand, TRequest, TResponse> : IControllerDetails
     {
-        public ControllerDetails()
-        {
-            References = new Type[] {typeof(TCommand), typeof(TRequest), typeof(TResponse)};
-            Options = new ControllerOptions {
-                Method = System.Net.Http.HttpMethod.Post,
-                AllowAnonymous = true
-            };
-        }
         public ControllerOptions Options {get; set;}
 
-        public IEnumerable<Type> References {get; set;}
+        public IEnumerable<Type> References {get; set;} = new Type[] {typeof(TCommand), typeof(TRequest), typeof(TResponse)};
 
-        public string GeneratedCode {get; set;}
+        public string GeneratedCode {get; set;} = string.Empty;
 
-        public ActionDetails ActionDetails { get; set; } = new ActionDetails();
+        public ActionDetails ActionDetails { get; private set; }
 
+        public ControllerDetails(ActionDetails actionDetails)
+        {
+            Options = new ControllerOptions();
+            ActionDetails = actionDetails;
+        }
+
+        public string Route()
+        {
+            return Options.Route ?? ActionDetails.MethodName;
+        }
         public string HttpMethod()
         {
             return Char.ToUpperInvariant(Options.Method.Method[0]) + Options.Method.Method.Substring(1).ToLowerInvariant();
