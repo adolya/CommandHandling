@@ -33,5 +33,30 @@ namespace CommandHandling.Samples
         {
             return new ResultResponse { Result = $"{ request.Size * request.Size }"};
         }
+
+        /// <summary>
+        /// Synchroniously calculate something
+        /// </summary>
+        /// <param name="request">input param</param>
+        public void Calculate(SizeRequest request)
+        {
+            
+        }
+
+        /// <summary>
+        /// Method without parameters 
+        /// </summary>
+        /// <returns>string representation of PI</returns>
+        public string Pi()
+        {
+            return $"{Math.PI}";
+        }
+
+        /// <summary>
+        /// Do nothing
+        /// </summary>
+        public void Do()
+        {
+        }
     }
 }

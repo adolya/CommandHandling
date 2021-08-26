@@ -13,42 +13,39 @@ namespace CommandHandling.Mvc.DependencyInjection.Extensions
     public static class GeneratorExtensions
     {
         internal const string GeneratedNamespace = "CommandHandling.GeneratedControllers";
-        
-        public static void GenerateControllerType<TCommand, TRequest, TResponse>(this IControllerDetails controllerDetails)
+        internal static string SingleIndent = new string(' ', 4);
+        public static void GenerateControllerType<TCommand>(this IControllerDetails controllerDetails)
         {
             var httpMethod = controllerDetails.HttpMethod();
-            var requestTypePrefix = httpMethod == "Post" ? "[FromBody]" : string.Empty; // Ugly solution TODO something better
+            var requestTypePrefix = controllerDetails.RequestMetaDataAttribute();
 
             var controllerAttributes = string.Join($"{Environment.NewLine}", new string[] {
-                "[ApiController]",
-                $"    [Route(\"{controllerDetails.ActionDetails.CommandName}\")]",
-                $"    [ApiExplorerSettings(GroupName = \"{typeof(TCommand).Name}\")]"});
+                $"{GeneratorExtensions.SingleIndent}[ApiController]",
+                $"{GeneratorExtensions.SingleIndent}[ApiExplorerSettings(GroupName = \"{typeof(TCommand).Name}\")]"});
             
             var comments = (string.IsNullOrEmpty(controllerDetails.ActionDetails.Comments) ? 
                                 new string[0] 
                                 : controllerDetails.ActionDetails.Comments.Split(Environment.NewLine))
                             .Where(_ => !string.IsNullOrWhiteSpace(_))
-                            .Select(_ => $"/// {_}" ).ToList();
+                            .Select(_ => $"/// {_.TrimStart()}" ).ToList();
             comments.Add($"[Http{httpMethod}(\"{controllerDetails.Route()}\")]");
-            var methodAttributes = string.Join($"{Environment.NewLine}", comments);
+            var methodAttributes = string.Join($"{Environment.NewLine}", comments.Select(_ => $"{GeneratorExtensions.SingleIndent}{GeneratorExtensions.SingleIndent}{_}"));
             controllerDetails.GeneratedCode = $@"using Microsoft.AspNetCore.Mvc;
             
 namespace CommandHandling.GeneratedControllers
 {{
-    {controllerAttributes}
+{controllerAttributes}
     public class {controllerDetails.ControllerName()} : ControllerBase
     {{
-        private readonly {typeof(TCommand).FullName} _{controllerDetails.ActionDetails.CommandName};
-        public {controllerDetails.ControllerName()}({typeof(TCommand).FullName} {controllerDetails.ActionDetails.CommandName})
+        private readonly {typeof(TCommand).FullName} {controllerDetails.ActionDetails.CommandName};
+        public {controllerDetails.ControllerName()}({typeof(TCommand).FullName} _{controllerDetails.ActionDetails.CommandName})
         {{
-            _{controllerDetails.ActionDetails.CommandName} = {controllerDetails.ActionDetails.CommandName};
+            {controllerDetails.ActionDetails.CommandName} = _{controllerDetails.ActionDetails.CommandName};
         }}
 
-        {methodAttributes}
-        public {typeof(TResponse).FullName} Process({requestTypePrefix}{typeof(TRequest).FullName} {controllerDetails.ActionDetails.ParameterName})
-        {{
-            return _{controllerDetails.ActionDetails.CommandName}.{controllerDetails.ActionDetails.MethodName}({controllerDetails.ActionDetails.ParameterName});
-        }}
+{methodAttributes}
+        public {controllerDetails.ActionDetails.ResponseType} Process({requestTypePrefix}{controllerDetails.ActionDetails.RequestType} {controllerDetails.ActionDetails.ParameterName})
+            {controllerDetails.MethodBody()}
     }}
 }}";          
         }
