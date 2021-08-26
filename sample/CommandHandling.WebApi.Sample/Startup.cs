@@ -28,20 +28,16 @@ namespace CommandHandling.WebApi.Sample
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddControllers();
-            services.RegisterHandler<Some, int, string>(
-                        (some, size) => some.Other(size),
-                        o =>
-                        {
-                            o.Method = HttpMethod.Get;
-                        });
-            services.RegisterHandler<Some, WeatherForecastInput, WeatherForecast>(
-                        (math, size) => math.Do(size));
-            
-            services.RegisterHandler<MathCommand, int, string>(
-                        (math, size) => math.SquareRoot(size));        
 
-            services.RegisterHandler<MathCommand, SizeRequest, ResultResponse>(
-                        (math, size) => math.Square(size));  
+            services.RegisterHandler<Some, WeatherForecastInput, WeatherForecast>(
+                        (math, size) => math.Do(size),
+                        ctx => ctx.Route = "some/do");
+            
+            services.RegisterHandler<MathCommand, int, string>((math, size) => math.SquareRoot(size)); // simple types
+            services.RegisterHandler<MathCommand, SizeRequest, ResultResponse>((math, size) => math.Square(size)); 
+            services.RegisterHandler<MathCommand, SizeRequest>((math, size) => math.Calculate(size)); 
+            services.RegisterHandler<MathCommand, string>((math) => math.Pi()); 
+            services.RegisterHandler<MathCommand>((math) => math.Do()); 
 
             services.AddHandlers(/* o => o.GenaratedFilesPath = "d:\\tmp\\controllers" */);
 

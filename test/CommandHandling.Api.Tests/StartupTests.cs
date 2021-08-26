@@ -18,9 +18,13 @@ namespace CommandHandling.Api.Tests
             webHostBuilder.UseStartup<DefaultStartup>();
             webHostBuilder.ConfigureServices(services => 
             {   
-                services.RegisterHandler<MathCommand, int, string>((math, size) => math.SquareRoot(size)); 
+                services.RegisterHandler<MathCommand, int, string>((math, size) => math.SquareRoot(size)); // simple types
                 services.RegisterHandler<MathCommand, SizeRequest, ResultResponse>((math, size) => math.Square(size)); 
-                services.AddHandlers(/* o => o.GenaratedFilesPath = "d:\\tmp\\controllers" */);
+                services.RegisterHandler<MathCommand, SizeRequest>((math, size) => math.Calculate(size)); 
+                services.RegisterHandler<MathCommand, string>((math) => math.Pi()); 
+                services.RegisterHandler<MathCommand>((math) => math.Do()); 
+                 
+                services.AddHandlers( o => o.GenaratedFilesPath = "d:\\tmp\\controllers");
             });
 
             return webHostBuilder;
@@ -33,12 +37,10 @@ namespace CommandHandling.Api.Tests
             {
                 var handlerOptions = (CommandHandlersOptions)webServer.Services.GetService(typeof(CommandHandlersOptions));
 
-                handlerOptions.Controllers.Should().HaveCount(2);
+                handlerOptions.Controllers.Should().HaveCount(5);
                 handlerOptions.Controllers.All(_ => !string.IsNullOrEmpty(_.GeneratedCode)).Should().BeTrue();
                 handlerOptions.Controllers.All(_ => !string.IsNullOrEmpty(_.ControllerName())).Should().BeTrue();
-                handlerOptions.Controllers.All(_ => !string.IsNullOrEmpty(_.HttpMethod())).Should().BeTrue();
-                handlerOptions.Controllers.All(_ => _.ActionDetails != null).Should().BeTrue();
-                handlerOptions.Controllers.All(_ => !string.IsNullOrEmpty(_.ActionDetails.Comments)).Should().BeTrue();
+                handlerOptions.Controllers.All(_ => _.HttpMethod() == "Post").Should().BeTrue();
             }
         }
     }

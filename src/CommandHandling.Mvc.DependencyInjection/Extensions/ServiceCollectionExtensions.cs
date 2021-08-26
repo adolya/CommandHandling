@@ -8,22 +8,27 @@ namespace CommandHandling.Mvc.DependencyInjection.Extensions
     {
         internal static CommandHandlersOptions GetCommandHandlersOptions(this IServiceCollection services)
         {
-            var commandHandlersOptions = GetServiceFromCollection<CommandHandlersOptions>(services);
+            var commandHandlersOptions = GetSingletonServiceFromCollection<CommandHandlersOptions>(services);
 
-            if (commandHandlersOptions == null)
-            {
-                commandHandlersOptions = new CommandHandlersOptions();
-                services.TryAddSingleton(commandHandlersOptions);
-            }
+
 
             return commandHandlersOptions;
         }
                 
-        private static T GetServiceFromCollection<T>(IServiceCollection services)
+        private static T GetSingletonServiceFromCollection<T>(IServiceCollection services)
+            where T: class, new()
         {
-            return (T)services
+            T? svc = services
                 .LastOrDefault(d => d.ServiceType == typeof(T))
-                ?.ImplementationInstance;
+                ?.ImplementationInstance as T;
+            
+            if (svc == null)
+            {
+                svc = new T();
+                services.TryAddSingleton(svc);
+            }
+
+            return svc;
         }
     }
 }

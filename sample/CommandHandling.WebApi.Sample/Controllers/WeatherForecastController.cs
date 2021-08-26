@@ -38,8 +38,6 @@ namespace CommandHandling.WebApi.Sample.Controllers
 
         [HttpPost]
         public WeatherForecast Post([FromBody]int request)
-        {
-            return new WeatherForecast(){TemperatureC = request};
-        }
+          =>  new WeatherForecast(){TemperatureC = request};
     }
 }

@@ -6,14 +6,18 @@ namespace CommandHandling.Mvc.DependencyInjection.Extensions
 {
     public static class HandlerExtensions
     {
-        public static IServiceCollection AddHandlers(this IServiceCollection services, Action<CommandHandlersOptions> ctx = null)
+        public static IServiceCollection AddHandlers(this IServiceCollection services)
+        {
+            return services.AddHandlers(o => {});
+        }
+
+        public static IServiceCollection AddHandlers(this IServiceCollection services, Action<CommandHandlersOptions> ctx)
         {
             var handlerOptions = services.GetCommandHandlersOptions();
             
-            if (ctx != null)
-                ctx(handlerOptions);
+            ctx(handlerOptions);
 
-            if (Directory.Exists(handlerOptions.GenaratedFilesPath))
+            if (!string.IsNullOrEmpty(handlerOptions.GenaratedFilesPath) && Directory.Exists(handlerOptions.GenaratedFilesPath))
             {
                 foreach (var controller in handlerOptions.Controllers)
                 {   
